@@ -121,32 +121,24 @@ function Upload-DiscordFile {
     )
 
     try {
-        # Read file as byte array
+        # Prepare the file content
         $fileBytes = [System.IO.File]::ReadAllBytes($FilePath)
+        $fileBase64 = [System.Convert]::ToBase64String($fileBytes)
 
-        # Construct multipart form-data content
-        $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
-        
-        # Add file content to the form-data
-        $fileContent = [System.Net.Http.ByteArrayContent]::new($fileBytes)
-        $fileContent.Headers.Add('Content-Disposition', "form-data; name=`"file`"; filename=`"$($FilePath | Split-Path -Leaf)`"")
-        $multipartContent.Add($fileContent)
-
-        # Add message content if provided
-        if (-not [string]::IsNullOrEmpty($Message)) {
-            $messageContent = [System.Net.Http.StringContent]::new($Message)
-            $messageContent.Headers.Add('Content-Disposition', 'form-data; name="content"')
-            $multipartContent.Add($messageContent)
+        # Construct the JSON payload
+        $payload = @{
+            content = $Message
+            file = @{
+                value = $fileBase64
+                filename = Split-Path $FilePath -Leaf
+            }
         }
 
-        # Create HTTP client
-        $httpClient = [System.Net.Http.HttpClient]::new()
+        # Convert payload to JSON
+        $jsonPayload = $payload | ConvertTo-Json
 
-        # Send POST request to Discord webhook
-        $response = $httpClient.PostAsync($WebhookUrl, $multipartContent).Result
-        $response.EnsureSuccessStatusCode()
-
-        Write-Output "File uploaded successfully to Discord webhook."
+        # Send the request to Discord webhook
+        Invoke-RestMethod -Uri $WebhookUrl -Method Post -ContentType 'multipart/form-data' -Body $jsonPayload
     }
     catch {
         Write-Error "Failed to upload file to Discord webhook: $_"
@@ -159,3 +151,4 @@ $filePath = "C:\Users\ameer\Downloads\SuperSecretDoc.txt"
 $message = "Here is the file upload!"
 
 Upload-DiscordFile -WebhookUrl $webhookUrl -FilePath $filePath -Message $message
+
